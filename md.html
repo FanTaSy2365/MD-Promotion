@@ -9,62 +9,176 @@
       margin: 0;
       padding: 20px;
       overflow: auto;
+      font-size: 40px;
     }
     
     /* 그래프 컨테이너 설정 */
     .chart-container {
       width: 100%;
-      min-height: 2400px;
+      min-height: 1800px;
       margin: 20px 0;
     }
     
     /* 캔버스 자체의 크기 설정 */
-    #resultChart {
+    #resultChart, #rankDistributionChart {
       width: 1200px !important;
       height: 800px !important;
       display: block;
+    }
+    
+    .chart-section {
+      margin-bottom: 100px;
+    }
+    
+    .section-title {
+      font-size: 60px;
+      margin: 30px 0;
+    }
+    
+    .mode-selector {
+      margin: 40px 0;
+      padding: 20px;
+      background-color: #f0f0f0;
+      border-radius: 20px;
+    }
+    
+    .mode-option {
+      display: flex;
+      align-items: center;
+      margin: 20px 0;
+    }
+    
+    .mode-option input {
+      width: 40px;
+      height: 40px;
+      margin-right: 20px;
+    }
+    
+    .mode-option label {
+      font-size: 40px;
+    }
+    
+    .input-group {
+      margin: 30px 0;
+    }
+    
+    input, select, button {
+      font-size: 40px;
+      padding: 15px;
+      margin: 10px 0;
+    }
+    
+    button {
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      padding: 20px 40px;
+      cursor: pointer;
+      border-radius: 10px;
+    }
+    
+    .hidden {
+      display: none;
     }
   </style>
 </head>
 <body>
   <h1>Rank Simulation</h1>
+  
+  <div class="mode-selector">
+    <h2>시뮬레이션 모드 선택</h2>
+    <div class="mode-option">
+      <input type="radio" id="singleMode" name="simMode" value="single" checked>
+      <label for="singleMode">단일 시뮬레이션 (기존 방식)</label>
+    </div>
+    <div class="mode-option">
+      <input type="radio" id="multiMode" name="simMode" value="multi">
+      <label for="multiMode">다중 시뮬레이션 (최종 랭크 분포)</label>
+    </div>
+  </div>
+
   <form id="simForm">
-    승률 (%): <input type="number" id="win_rate" required><br>
-    플레이 수: <input type="number" id="num_games" required><br>
-    시작 랭크:
-    <select id="rank_index">
-      <option value="0">Platinum 5</option>
-      <option value="1">Platinum 4</option>
-      <option value="2">Platinum 3</option>
-      <option value="3">Platinum 2</option>
-      <option value="4">Platinum 1</option>
-      <option value="5">Diamond 5</option>
-      <option value="6">Diamond 4</option>
-      <option value="7">Diamond 3</option>
-      <option value="8">Diamond 2</option>
-      <option value="9">Diamond 1</option>
-      <option value="10">Master 5</option>
-      <option value="11">Master 4</option>
-      <option value="12">Master 3</option>
-      <option value="13">Master 2</option>
-      <option value="14">Master 1</option>
-    </select><br>
+    <div class="input-group">
+      승률 (%): <input type="number" id="win_rate" required>
+    </div>
+    
+    <div class="input-group">
+      플레이 수: <input type="number" id="num_games" required>
+    </div>
+    
+    <div id="multiSimGroup" class="input-group hidden">
+      시뮬레이션 횟수: <input type="number" id="num_simulations" value="100" min="1">
+    </div>
+    
+    <div class="input-group">
+      시작 랭크:
+      <select id="rank_index">
+        <option value="0">Platinum 5</option>
+        <option value="1">Platinum 4</option>
+        <option value="2">Platinum 3</option>
+        <option value="3">Platinum 2</option>
+        <option value="4">Platinum 1</option>
+        <option value="5">Diamond 5</option>
+        <option value="6">Diamond 4</option>
+        <option value="7">Diamond 3</option>
+        <option value="8">Diamond 2</option>
+        <option value="9">Diamond 1</option>
+        <option value="10">Master 5</option>
+        <option value="11">Master 4</option>
+        <option value="12">Master 3</option>
+        <option value="13">Master 2</option>
+        <option value="14">Master 1</option>
+      </select>
+    </div>
+    
     <button type="submit">시뮬레이션 실행</button>
   </form>
 
-  <div class="chart-container">
-    <canvas id="resultChart"></canvas>
+  <div id="singleResult" class="chart-section">
+    <h2 class="section-title">랭크별 평균 승률</h2>
+    <div class="chart-container">
+      <canvas id="resultChart"></canvas>
+    </div>
+  </div>
+  
+  <div id="multiResult" class="chart-section hidden">
+    <h2 class="section-title">최종 랭크 분포 (총 <span id="totalSimulations">0</span>회 시뮬레이션)</h2>
+    <div class="chart-container">
+      <canvas id="rankDistributionChart"></canvas>
+    </div>
   </div>
 
   <script>
+    // 모드 선택 이벤트 핸들러
+    document.querySelectorAll('input[name="simMode"]').forEach(radio => {
+      radio.addEventListener('change', function() {
+        const multiSimGroup = document.getElementById('multiSimGroup');
+        const singleResult = document.getElementById('singleResult');
+        const multiResult = document.getElementById('multiResult');
+        
+        if (this.value === 'multi') {
+          multiSimGroup.classList.remove('hidden');
+          singleResult.classList.add('hidden');
+          multiResult.classList.remove('hidden');
+        } else {
+          multiSimGroup.classList.add('hidden');
+          singleResult.classList.remove('hidden');
+          multiResult.classList.add('hidden');
+        }
+      });
+    });
+
     document.getElementById("simForm").addEventListener("submit", function (e) {
       e.preventDefault();
 
       const winRate = document.getElementById("win_rate").value;
       const numGames = document.getElementById("num_games").value;
       const rankIndex = document.getElementById("rank_index").value;
+      const simMode = document.querySelector('input[name="simMode"]:checked').value;
+      const numSimulations = simMode === 'multi' ? 
+        document.getElementById("num_simulations").value : 1;
 
-      fetch(`/run_simulation?win_rate=${winRate}&num_games=${numGames}&rank_index=${rankIndex}`)
+      fetch(`/run_simulation?win_rate=${winRate}&num_games=${numGames}&rank_index=${rankIndex}&num_simulations=${numSimulations}`)
         .then(res => res.json())
         .then(data => {
           // 정렬된 랭크 순서 정의
@@ -74,124 +188,215 @@
             "Master 5", "Master 4", "Master 3", "Master 2", "Master 1"
           ];
           
-          // 라벨과 데이터를 저장할 배열
-          const labels = [];
-          const winRates = [];
-          const counts = [];
+          if (simMode === 'single') {
+            // 단일 시뮬레이션 모드 - 기존 승률 그래프 표시
+            const firstResult = data.simulations[0];
+            const labels = [];
+            const winRates = [];
+            const counts = [];
 
-          // 서버 데이터를 정의된 순서로 정렬
-          rankOrder.forEach(rank => {
-            if (data[rank]) {
-              labels.push(rank);
-              const entry = data[rank];
-              const avgWinRate = (entry.wins / entry.count).toFixed(2);
-              winRates.push(avgWinRate);
-              counts.push(entry.count);
+            rankOrder.forEach(rank => {
+              if (firstResult[rank]) {
+                labels.push(rank);
+                const entry = firstResult[rank];
+                const avgWinRate = (entry.wins / entry.count).toFixed(2);
+                winRates.push(avgWinRate);
+                counts.push(entry.count);
+              }
+            });
+
+            // 기존 차트 제거
+            const chartCanvas = document.getElementById('resultChart');
+            const existingChart = Chart.getChart(chartCanvas);
+            if (existingChart) {
+              existingChart.destroy();
             }
-          });
 
-          // 기존 차트가 있으면 제거
-          const chartCanvas = document.getElementById('resultChart');
-          const existingChart = Chart.getChart(chartCanvas);
-          if (existingChart) {
-            existingChart.destroy();
-          }
-
-          // 캔버스의 물리적 크기 설정 (중요!)
-          chartCanvas.width = 3800;
-          chartCanvas.height = 2400;
-          
-          // 새 차트 생성
-          const ctx = chartCanvas.getContext('2d');
-          new Chart(ctx, {
-            type: 'bar',
-            data: {
-              labels: labels,
-              datasets: [{
-                label: '랭크별 평균 승률',
-                data: winRates,
-                backgroundColor: 'rgba(75, 192, 192, 0.6)',
-                // 바 크기 설정
-                barThickness: 100, // 바 두께 (픽셀)
-                categoryPercentage: 0.8, // 카테고리 간격
-                barPercentage: 0.9, // 바 너비 비율
-              }]
-            },
-            options: {
-              // 반응형 비활성화
-              responsive: false,
-              maintainAspectRatio: false,
-              
-              // 레이아웃 설정
-              layout: {
-                padding: {
-                  top: 50,
-                  bottom: 150, // x축 레이블 공간 확보
-                  left: 150,
-                  right: 50
-                }
+            // 캔버스의 물리적 크기 설정
+            chartCanvas.width = 3800;
+            chartCanvas.height = 2400;
+            
+            // 평균 승률 차트 생성
+            const ctx = chartCanvas.getContext('2d');
+            new Chart(ctx, {
+              type: 'bar',
+              data: {
+                labels: labels,
+                datasets: [{
+                  label: '랭크별 평균 승률',
+                  data: winRates,
+                  backgroundColor: 'rgba(75, 192, 192, 0.6)',
+                  barThickness: 100,
+                  categoryPercentage: 0.8,
+                  barPercentage: 0.9,
+                }]
               },
-              
-              scales: {
-                y: {
-                  beginAtZero: true,
-                  max: 1,
-                  title: {
-                    display: true,
-                    text: '승률',
-                    font: {
-                      size: 40 // 축 제목 글꼴 크기
+              options: {
+                responsive: false,
+                maintainAspectRatio: false,
+                layout: {
+                  padding: {
+                    top: 50,
+                    bottom: 150,
+                    left: 150,
+                    right: 50
+                  }
+                },
+                scales: {
+                  y: {
+                    beginAtZero: true,
+                    max: 1,
+                    title: {
+                      display: true,
+                      text: '승률',
+                      font: {
+                        size: 40
+                      }
+                    },
+                    ticks: {
+                      font: {
+                        size: 30
+                      }
                     }
                   },
-                  ticks: {
-                    font: {
-                      size: 30 // 축 눈금 글꼴 크기
+                  x: {
+                    title: {
+                      display: true,
+                      text: '랭크',
+                      font: {
+                        size: 40
+                      }
+                    },
+                    ticks: {
+                      font: {
+                        size: 30
+                      },
+                      maxRotation: 45,
+                      minRotation: 45
                     }
                   }
                 },
-                x: {
-                  title: {
-                    display: true,
-                    text: '랭크',
-                    font: {
-                      size: 40
+                plugins: {
+                  legend: {
+                    labels: {
+                      font: {
+                        size: 35
+                      }
                     }
                   },
-                  ticks: {
-                    font: {
+                  tooltip: {
+                    bodyFont: {
                       size: 30
                     },
-                    // x축 레이블 회전 (가독성 향상)
-                    maxRotation: 45,
-                    minRotation: 45
-                  }
-                }
-              },
-              plugins: {
-                legend: {
-                  labels: {
-                    font: {
-                      size: 35 // 범례 글꼴 크기
-                    }
-                  }
-                },
-                tooltip: {
-                  bodyFont: {
-                    size: 30 // 툴팁 글꼴 크기
-                  },
-                  callbacks: {
-                    label: function(context) {
-                      const label = context.dataset.label || '';
-                      const value = context.parsed.y;
-                      const index = context.dataIndex;
-                      const gameCount = counts[index];
-                      return `${label}: ${value} (${gameCount}게임)`;
+                    callbacks: {
+                      label: function(context) {
+                        const label = context.dataset.label || '';
+                        const value = context.parsed.y;
+                        const index = context.dataIndex;
+                        const gameCount = counts[index];
+                        return `${label}: ${value} (${gameCount}게임)`;
+                      }
                     }
                   }
                 }
               }
+            });
+          } else {
+            // 다중 시뮬레이션 모드 - 최종 랭크 분포 그래프 표시
+            document.getElementById("totalSimulations").textContent = numSimulations;
+            
+            const distributionCanvas = document.getElementById('rankDistributionChart');
+            const existingDistChart = Chart.getChart(distributionCanvas);
+            if (existingDistChart) {
+              existingDistChart.destroy();
             }
-          });
+            
+            distributionCanvas.width = 3800;
+            distributionCanvas.height = 2400;
+            
+            const distCtx = distributionCanvas.getContext('2d');
+            const distLabels = rankOrder;
+            const distData = distLabels.map(rank => data.rank_counts[rank] || 0);
+            
+            new Chart(distCtx, {
+              type: 'bar',
+              data: {
+                labels: distLabels,
+                datasets: [{
+                  label: '최종 랭크 도달 횟수',
+                  data: distData,
+                  backgroundColor: 'rgba(255, 159, 64, 0.6)',
+                  barThickness: 100,
+                  categoryPercentage: 0.8,
+                  barPercentage: 0.9,
+                }]
+              },
+              options: {
+                responsive: false,
+                maintainAspectRatio: false,
+                layout: {
+                  padding: {
+                    top: 50,
+                    bottom: 150,
+                    left: 150,
+                    right: 50
+                  }
+                },
+                scales: {
+                  y: {
+                    beginAtZero: true,
+                    title: {
+                      display: true,
+                      text: '도달 횟수',
+                      font: {
+                        size: 40
+                      }
+                    },
+                    ticks: {
+                      font: {
+                        size: 30
+                      }
+                    }
+                  },
+                  x: {
+                    title: {
+                      display: true,
+                      text: '최종 랭크',
+                      font: {
+                        size: 40
+                      }
+                    },
+                    ticks: {
+                      font: {
+                        size: 30
+                      },
+                      maxRotation: 45,
+                      minRotation: 45
+                    }
+                  }
+                },
+                plugins: {
+                  legend: {
+                    labels: {
+                      font: {
+                        size: 35
+                      }
+                    }
+                  },
+                  tooltip: {
+                    bodyFont: {
+                      size: 30
+                    },
+                    callbacks: {
+                      label: function(context) {
+                        return `도달 횟수: ${context.parsed.y}`;
+                      }
+                    }
+                  }
+                }
+              }
+            });
+          }
         });
     });
   </script>
