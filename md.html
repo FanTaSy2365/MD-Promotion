@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Rank Simulation</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+  <h1>Rank Simulation</h1>
+  <form id="simForm">
+    승률 (%): <input type="number" id="win_rate" required><br>
+    플레이 수: <input type="number" id="num_games" required><br>
+    시작 랭크:
+    <select id="rank_index">
+      <option value="0">Platinum 5</option>
+      <option value="1">Platinum 4</option>
+      <option value="2">Platinum 3</option>
+      <option value="3">Platinum 2</option>
+      <option value="4">Platinum 1</option>
+      <option value="5">Diamond 5</option>
+      <option value="6">Diamond 4</option>
+      <option value="7">Diamond 3</option>
+      <option value="8">Diamond 2</option>
+      <option value="9">Diamond 1</option>
+      <option value="10">Master 5</option>
+      <option value="11">Master 4</option>
+      <option value="12">Master 3</option>
+      <option value="13">Master 2</option>
+      <option value="14">Master 1</option>
+    </select><br>
+    <button type="submit">시뮬레이션 실행</button>
+  </form>
+
+  <canvas id="resultChart" width="800" height="400"></canvas>
+
+  <script>
+    document.getElementById("simForm").addEventListener("submit", function (e) {
+      e.preventDefault();
+
+      const winRate = document.getElementById("win_rate").value;
+      const numGames = document.getElementById("num_games").value;
+      const rankIndex = document.getElementById("rank_index").value;
+
+      fetch(`/run_simulation?win_rate=${winRate}&num_games=${numGames}&rank_index=${rankIndex}`)
+        .then(res => res.json())
+        .then(data => {
+          // 서버에서 받은 데이터 로그 출력 (디버깅용)
+          console.log("서버 응답 데이터:", data);
+          
+          // 정렬된 랭크 순서 정의
+          const rankOrder = [
+            "Platinum 5", "Platinum 4", "Platinum 3", "Platinum 2", "Platinum 1",
+            "Diamond 5", "Diamond 4", "Diamond 3", "Diamond 2", "Diamond 1",
+            "Master 5", "Master 4", "Master 3", "Master 2", "Master 1"
+          ];
+          
+          // 라벨과 데이터를 저장할 배열
+          const labels = [];
+          const winRates = [];
+          const counts = [];
+
+          // 서버 데이터를 정의된 순서로 정렬
+          rankOrder.forEach(rank => {
+            if (data[rank]) {
+              labels.push(rank);
+              const entry = data[rank];
+              const avgWinRate = (entry.wins / entry.count).toFixed(2);
+              winRates.push(avgWinRate);
+              counts.push(entry.count);
+            }
+          });
+
+          // 디버깅 정보 출력
+          console.log("정렬된 라벨:", labels);
+          console.log("승률 데이터:", winRates);
+          console.log("게임 수 데이터:", counts);
+
+          // 기존 차트가 있으면 제거
+          const chartCanvas = document.getElementById('resultChart');
+          const existingChart = Chart.getChart(chartCanvas);
+          if (existingChart) {
+            existingChart.destroy();
+          }
+
+          // 새 차트 생성
+          const ctx = chartCanvas.getContext('2d');
+          new Chart(ctx, {
+            type: 'bar',
+            data: {
+              labels: labels,
+              datasets: [{
+                label: '랭크별 평균 승률',
+                data: winRates,
+                backgroundColor: 'rgba(75, 192, 192, 0.6)'
+              }]
+            },
+            options: {
+              scales: {
+                y: {
+                  beginAtZero: true,
+                  max: 1,
+                  title: {
+                    display: true,
+                    text: '승률'
+                  }
+                },
+                x: {
+                  title: {
+                    display: true,
+                    text: '랭크'
+                  }
+                }
+              },
+              plugins: {
+                tooltip: {
+                  callbacks: {
+                    label: function(context) {
+                      const label = context.dataset.label || '';
+                      const value = context.parsed.y;
+                      const index = context.dataIndex;
+                      const gameCount = counts[index];
+                      return `${label}: ${value} (${gameCount}게임)`;
+                    }
+                  }
+                }
+              }
+            }
+          });
+        });
+    });
+  </script>
+</body>
+</html>
+
+<script>
+    document.getElementById("simForm").addEventListener("submit", function (e) {
+      e.preventDefault();
+  
+      const winRate = document.getElementById("win_rate").value;
+      const numGames = document.getElementById("num_games").value;
+      const rankIndex = document.getElementById("rank_index").value;
+  
+      fetch(`/run_simulation?win_rate=${winRate}&num_games=${numGames}&rank_index=${rankIndex}`)
+        .then(res => res.json())
+        .then(data => {
+          // 정렬된 랭크 순서 정의
+          const rankOrder = [
+            "Platinum 5", "Platinum 4", "Platinum 3", "Platinum 2", "Platinum 1",
+            "Diamond 5", "Diamond 4", "Diamond 3", "Diamond 2", "Diamond 1",
+            "Master 5", "Master 4", "Master 3", "Master 2", "Master 1"
+          ];
+          
+          // 서버 데이터를 정의된 순서로 정렬
+          const sortedData = {};
+          rankOrder.forEach(rank => {
+            if (data[rank]) {
+              sortedData[rank] = data[rank];
+            }
+          });
+  
+          // 정렬된 데이터로 차트 생성
+          const labels = Object.keys(sortedData);
+          const winRates = labels.map(rank => {
+            const entry = sortedData[rank];
+            return (entry.wins / entry.count).toFixed(2);
+          });
+  
+          const ctx = document.getElementById('resultChart').getContext('2d');
+          new Chart(ctx, {
+            type: 'bar',
+            data: {
+              labels: labels,
+              datasets: [{
+                label: 'Average Win Rate per Rank',
+                data: winRates,
+                backgroundColor: 'rgba(75, 192, 192, 0.6)'
+              }]
+            },
+            options: {
+              scales: {
+                y: {
+                  beginAtZero: true,
+                  max: 1
+                }
+              }
+            }
+          });
+        });
+    });
+  </script>
+    
