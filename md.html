@@ -4,6 +4,27 @@
   <meta charset="UTF-8">
   <title>Rank Simulation</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body {
+      margin: 0;
+      padding: 20px;
+      overflow: auto;
+    }
+    
+    /* 그래프 컨테이너 설정 */
+    .chart-container {
+      width: 100%;
+      min-height: 2400px;
+      margin: 20px 0;
+    }
+    
+    /* 캔버스 자체의 크기 설정 */
+    #resultChart {
+      width: 1200px !important;
+      height: 800px !important;
+      display: block;
+    }
+  </style>
 </head>
 <body>
   <h1>Rank Simulation</h1>
@@ -31,7 +52,9 @@
     <button type="submit">시뮬레이션 실행</button>
   </form>
 
-  <canvas id="resultChart" width="800" height="400"></canvas>
+  <div class="chart-container">
+    <canvas id="resultChart"></canvas>
+  </div>
 
   <script>
     document.getElementById("simForm").addEventListener("submit", function (e) {
@@ -44,9 +67,6 @@
       fetch(`/run_simulation?win_rate=${winRate}&num_games=${numGames}&rank_index=${rankIndex}`)
         .then(res => res.json())
         .then(data => {
-          // 서버에서 받은 데이터 로그 출력 (디버깅용)
-          console.log("서버 응답 데이터:", data);
-          
           // 정렬된 랭크 순서 정의
           const rankOrder = [
             "Platinum 5", "Platinum 4", "Platinum 3", "Platinum 2", "Platinum 1",
@@ -70,11 +90,6 @@
             }
           });
 
-          // 디버깅 정보 출력
-          console.log("정렬된 라벨:", labels);
-          console.log("승률 데이터:", winRates);
-          console.log("게임 수 데이터:", counts);
-
           // 기존 차트가 있으면 제거
           const chartCanvas = document.getElementById('resultChart');
           const existingChart = Chart.getChart(chartCanvas);
@@ -82,6 +97,10 @@
             existingChart.destroy();
           }
 
+          // 캔버스의 물리적 크기 설정 (중요!)
+          chartCanvas.width = 3800;
+          chartCanvas.height = 2400;
+          
           // 새 차트 생성
           const ctx = chartCanvas.getContext('2d');
           new Chart(ctx, {
@@ -91,28 +110,75 @@
               datasets: [{
                 label: '랭크별 평균 승률',
                 data: winRates,
-                backgroundColor: 'rgba(75, 192, 192, 0.6)'
+                backgroundColor: 'rgba(75, 192, 192, 0.6)',
+                // 바 크기 설정
+                barThickness: 100, // 바 두께 (픽셀)
+                categoryPercentage: 0.8, // 카테고리 간격
+                barPercentage: 0.9, // 바 너비 비율
               }]
             },
             options: {
+              // 반응형 비활성화
+              responsive: false,
+              maintainAspectRatio: false,
+              
+              // 레이아웃 설정
+              layout: {
+                padding: {
+                  top: 50,
+                  bottom: 150, // x축 레이블 공간 확보
+                  left: 150,
+                  right: 50
+                }
+              },
+              
               scales: {
                 y: {
                   beginAtZero: true,
                   max: 1,
                   title: {
                     display: true,
-                    text: '승률'
+                    text: '승률',
+                    font: {
+                      size: 40 // 축 제목 글꼴 크기
+                    }
+                  },
+                  ticks: {
+                    font: {
+                      size: 30 // 축 눈금 글꼴 크기
+                    }
                   }
                 },
                 x: {
                   title: {
                     display: true,
-                    text: '랭크'
+                    text: '랭크',
+                    font: {
+                      size: 40
+                    }
+                  },
+                  ticks: {
+                    font: {
+                      size: 30
+                    },
+                    // x축 레이블 회전 (가독성 향상)
+                    maxRotation: 45,
+                    minRotation: 45
                   }
                 }
               },
               plugins: {
+                legend: {
+                  labels: {
+                    font: {
+                      size: 35 // 범례 글꼴 크기
+                    }
+                  }
+                },
                 tooltip: {
+                  bodyFont: {
+                    size: 30 // 툴팁 글꼴 크기
+                  },
                   callbacks: {
                     label: function(context) {
                       const label = context.dataset.label || '';
